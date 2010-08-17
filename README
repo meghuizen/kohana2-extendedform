@@ -1,0 +1,122 @@
+== What is it ==
+
+Automatic form handling for Kohana 2.x in the way as it should be. It generates input fields from the data collected from the ORM objects. Also can you use Extended_ORM, which will allow you to add extra meta info to your objects. This enables you to centralise your meta information, so you don't have to do things multiple times.
+
+This library can also replace HTML input fields as well as labels in your views with fully working input boxes, so you don´t have to add them in the PHP code as well as don't have to add them multiple times.
+
+=== In code ====
+
+Example:
+
+ORM models: group, group_attribute
+
+group->has_one = group_attribute
+
+group has fields:
+id (sequenties/auto_increment)
+group_attribute_id REFERENCES group_attributes(id)
+uuid
+name
+
+group_attribute:
+id (sequenties/auto_increment)
+description
+hidden
+
+
+controllers/group.php: function edit()
+
+$group = ORM::factory('group', 1);
+
+extendedform::add_orm($group); // parses orm data and adds it to extendedform, from here on you can view the inputs and labels
+
+//echo Kohana::debug(extendedform::get_inputs());
+//echo Kohana::debug(extendedform::get_labels());
+
+$this->template->content = new View('group/main');
+$this->template->content->js_variable = extendedform::get_inputdata_json(); // for Javascript validation and stuff like that
+
+$this->template->content = extendedform::parse_view($this->template->content); //parse the view. str_replace() the fields with working ones
+
+
+views/group/main:
+
+<?php echo extendedform::open(); ?>
+<ul class="form">
+	<li><label for="group.id"></label> <strong>:</strong> <input type="text" name="group.id" /></li>
+	<li><label for="group.uuid"></label> <strong>:</strong> <input type="text" name="group.uuid" /></li>
+	<li><label for="group.name"></label> <strong>:</strong> <input type="text" name="group.name" /></li>
+	<li><label for="group_attribute.description"></label> <strong>:</strong> <textarea name="group.description"></textarea></li>
+	<li><label for="group_attribute.avatarurl"></label> <strong>:</strong> <input type="checkbox" name="group_attribute.hidden" /></li>
+</ul>
+
+<?php echo extendedform::close(); ?>
+
+<script type="text/javascript">
+	var inputdata = <?php echo $js_variable; ?>;
+	//console.log(inputdata);
+</script>
+
+=== Collected infomation of the input fields ===
+
+	/*protected $_column_data = array(
+		"fieldname" => array(
+			"type" => "type", // integer, text, textarea, wysiwyg, uuid, date, datetime, checkbox, radiobutton, select
+			"description" => "group.field.id.description", // $this->object_name . '.' . 'field' . '$fieldname' . 'description';
+			"label" => "group.field.id.label", // $this->object_name . '.' . 'field' . '$fieldname' . 'label';
+			"watermark" => "group.field.id.watermark",  // $this->object_name . '.' . 'field' . '$fieldname' . 'watermark';
+			"value" => NULL,
+			"editable" => FALSE,
+			"required" => FALSE,
+			"maxlength" => NULL,
+			"minlength" => NULL,
+			"callbacks" = array(),  // may NOT be a string
+			"pre_filters" = array(),  // may NOT be a string
+			"post_filters" = array(),  // may NOT be a string
+			"regexp" => '/^[0-9]+$/d',
+			"options" => array( // for select boxes
+				"value" => "Text",
+				"value2" => "Text 2"
+			)
+		),
+		
+	);*/
+
+=== What should that code do ===
+
+First it should parse the orms put in the form, so it can detect which fields there are, which types there are, and stuff like that.
+
+Second it should give the js_variable the input information in JSON format of the input fields it generated in the first step. This is so you can use a javascript validation framework as complementing on the form library. So you don't have to hand build any validation anymore.
+
+Third it replaces the view input and label fields, for anything it can find the correct name (objectname.fieldname) with the full version of that, so you can write <input name="group.uuid" /> and it will replace that with: <input type="text" id="txtgroup-uuid" name="group.uuid" value="d2c14832-aa24-11df-948d-0016e6dd6ed3" title="group.field.uuid.description" class="uuid"  />
+
+pseudo code of that last part, on how it works:
+	preg_match_all('/<input[^>]*?>/i', $viewdata, $originalinputs);
+	preg_match_all('/<textarea[^>]*?>.*?<\/textarea>/i', $viewdata, $toriginalinputs);
+	preg_match_all('/<select[^>]*?>.*?<\/select>/i', $viewdata, $toriginalinputs);
+	
+	preg_match_all('/<label[^>]*?>.*?<\/label>/i', $viewdata, $originallabels);
+	
+	foreach ($originalinputs as $input) {
+		preg_match('/.*?name="(.*?)"/i', $input, $originalname);
+		
+		if (empty(self::$_inputelements[ $originalname[1] ])) //dont replace other input field
+			continue;
+		
+		$viewdata = str_replace($originalhtml, self::$_inputelements[ $originalname[1] ], $viewdata);
+	}
+
+== Pros ==
+
+* You don't have to learn new PHP code to add input fields, you can use HTML for that
+* A lots of automation can be done here, which makes it more secure as well as far more easier to code
+* Every webdesigner/pogrammer knows HTML and can better code HTML then search their form library documentation for that
+
+== The idea ==
+
+You should be able to add classes, onclicks, and other attributes as well to the input, select, textarea and labels as well, and the form library should merge those things with the automated part. So you can just add classes to the input field, without searching the documentation of your formlibrary.
+
+
+== Warning ==
+
+It's not done, not even the slightest. It's currently a proof of concept, which we can elaborate on.
