@@ -154,7 +154,7 @@ class extendedform_Core extends form {
 		return json_encode($jsonarr);
 	}
 	
-	public static function parse_view($view) {
+	public static function parse_view($view, $other_inputfields = FALSE) {
 		$viewdata = '';
 		
 		if ($view instanceof View)
@@ -179,8 +179,11 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname]))
+			if (empty(self::$_inputelements[$originalname])) {
+				if ($other_inputfields)
+					self::$_inputelements[$originalname] = $input;
 				continue;
+			}
 			
 			//attributes need to have quotes. Without they will not be catched
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $input, $originalattributes);
@@ -218,8 +221,11 @@ class extendedform_Core extends form {
 			$originalid = $originalid[1];
 			$originalhtml = $label;
 			
-			if (empty(self::$_labelelements[$originalid]))
+			if (empty(self::$_labelelements[$originalid])) {
+				if ($other_inputfields)
+					self::$_labelelements[$originalid] = $label;
 				continue;
+			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
 			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)/i', $label, $attributepart);
@@ -260,8 +266,11 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname]))
+			if (empty(self::$_inputelements[$originalname])) {
+				if ($other_inputfields)
+					self::$_inputelements[$originalname] = $input;
 				continue;
+			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
 			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)/i', $input, $attributepart);
@@ -302,8 +311,11 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname]))
+			if (empty(self::$_inputelements[$originalname])) {
+				if ($other_inputfields)
+					self::$_inputelements[$originalname] = $input;
 				continue;
+			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
 			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)/i', $input, $attributepart);
