@@ -161,17 +161,14 @@ class extendedform_Core extends form {
 			$viewdata = $view->render();
 		else
 			$viewdata = (string) $view;
-		
+		// TODO: this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times) (so does NOT work yet!!)
 		preg_match_all('/<input[^>]*?>/i', $viewdata, $originalinputs);
-		preg_match_all('/<textarea[^>]*?>.*?<\/textarea>/i', $viewdata, $toriginalinputs);
-		if (!empty($originalinputs[0]) && !empty($toriginalinputs[0]))
-			$originalinputs[0] = array_merge($originalinputs[0], $toriginalinputs[0]);
-		preg_match_all('/<select[^>]*?>.*?<\/select>/i', $viewdata, $toriginalinputs);
-		if (!empty($originalinputs[0]) && !empty($toriginalinputs[0]))
-			$originalinputs[0] = array_merge($originalinputs[0], $toriginalinputs[0]);
+		preg_match_all('/<textarea[^>]*?>.*?<\/textarea>/i', $viewdata, $originaltextareas);
+		preg_match_all('/<select[^>]*?>.*?<\/select>/i', $viewdata, $originalselects);
 		
 		preg_match_all('/<label[^>]*?>.*?<\/label>/i', $viewdata, $originallabels);
 		
+		// plain input fields
 		if (!empty($originalinputs[0]) && count($originalinputs[0]) > 0)
 		foreach ($originalinputs[0] as $input) {
 			preg_match('/.*?name="(.*?)"/i', $input, $originalname);
@@ -185,9 +182,32 @@ class extendedform_Core extends form {
 			if (empty(self::$_inputelements[$originalname]))
 				continue;
 			
+			//attributes need to have quotes. Without they will not be catched
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $input, $originalattributes);
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
+			
+			
+			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			
+			self::$_inputelements[$originalname] = '<input';
+			foreach ($newattributes as $attr => $val) {
+				$quotechar = '"';
+				
+				if (strpos($val, '"') !== FALSE)
+					$quotechar = "'";
+				
+				// no need to use htmlentities or specialchars, because that has already been done
+				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+			}
+			if (substr($originalhtml, strlen($originalhtml) - 2, 2) === "/>")
+				self::$_inputelements[$originalname] .= ' />';
+			else
+				self::$_inputelements[$originalname] .= ' >';
+			
 			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
 		}
 		
+		// labels
 		if (!empty($originallabels[0]) && count($originallabels[0]) > 0)
 		foreach ($originallabels[0] as $label) {
 			preg_match('/.*?for="(.*?)"/i', $label, $originalid);
@@ -201,9 +221,143 @@ class extendedform_Core extends form {
 			if (empty(self::$_labelelements[$originalid]))
 				continue;
 			
+			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
+			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)/i', $label, $attributepart);
+			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)(.*?<\/label>)/i', self::$_labelelements[$originalid], $otherpart);
+			
+			$attributepart = $attributepart[0];
+			$otherpart = $otherpart[2];
+			
+			//attributes need to have quotes. Without they will not be catched
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_labelelements[$originalid], $newattributes);
+			
+			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
+
+			self::$_labelelements[$originalid] = '<label';
+			foreach ($newattributes as $attr => $val) {
+				$quotechar = '"';
+				
+				if (strpos($val, '"') !== FALSE)
+					$quotechar = "'";
+				
+				// no need to use htmlentities or specialchars, because that has already been done
+				self::$_labelelements[$originalid] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+			}
+			self::$_labelelements[$originalid] .= ">" . $otherpart;
+			
 			$viewdata = str_replace($originalhtml, self::$_labelelements[$originalid], $viewdata);
 		}
 		
+		// select boxes
+		if (!empty($originalselects[0]) && count($originalselects[0]) > 0)
+		foreach ($originalselects[0] as $input) {
+			preg_match('/.*?name="(.*?)"/i', $input, $originalname);
+			
+			if (empty($originalname[1]))
+				continue;
+			
+			$originalname = $originalname[1];
+			$originalhtml = $input;
+			
+			if (empty(self::$_inputelements[$originalname]))
+				continue;
+			
+			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
+			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)/i', $input, $attributepart);
+			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)(.*?<\/select>)/i', self::$_inputelements[$originalname], $otherpart);
+			
+			$attributepart = $attributepart[0];
+			$otherpart = $otherpart[2];
+			
+			//attributes need to have quotes. Without they will not be catched
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
+			
+			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
+
+			self::$_inputelements[$originalname] = '<select';
+			foreach ($newattributes as $attr => $val) {
+				$quotechar = '"';
+				
+				if (strpos($val, '"') !== FALSE)
+					$quotechar = "'";
+				
+				// no need to use htmlentities or specialchars, because that has already been done
+				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+			}
+			self::$_inputelements[$originalname] .= ">" . $otherpart;
+			
+			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
+		}
+		
+		// textareas
+		if (!empty($originaltextareas[0]) && count($originaltextareas[0]) > 0)
+		foreach ($originaltextareas[0] as $input) {
+			preg_match('/.*?name="(.*?)"/i', $input, $originalname);
+			
+			if (empty($originalname[1]))
+				continue;
+			
+			$originalname = $originalname[1];
+			$originalhtml = $input;
+			
+			if (empty(self::$_inputelements[$originalname]))
+				continue;
+			
+			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
+			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)/i', $input, $attributepart);
+			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)(.*?<\/textarea>)/i', self::$_inputelements[$originalname], $otherpart);
+			
+			$attributepart = $attributepart[0];
+			$otherpart = $otherpart[2];
+			
+			//attributes need to have quotes. Without they will not be catched
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
+			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
+			
+			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
+
+			self::$_inputelements[$originalname] = '<textarea';
+			foreach ($newattributes as $attr => $val) {
+				$quotechar = '"';
+				
+				if (strpos($val, '"') !== FALSE)
+					$quotechar = "'";
+				
+				// no need to use htmlentities or specialchars, because that has already been done
+				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+			}
+			self::$_inputelements[$originalname] .= ">" . $otherpart;
+			
+			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
+		}
+		
 		return $viewdata;
+	}
+	
+	public static function htmlattributes_tokeyvalarray($htmlattributesarray) {
+		$retarr = array();
+		
+		if (!empty($htmlattributesarray) && count($htmlattributesarray) > 0)
+		foreach ($htmlattributesarray as $htmlattribute) {
+			$htmlattribute = trim($htmlattribute);
+			
+			if (strpos($htmlattribute, "=") === FALSE) { // single html element
+				$retarr[strtolower(trim($htmlattribute))] = $htmlattribute;
+				continue;
+			}
+			
+			$htmlattribute = explode("=", $htmlattribute);
+			
+			//string quotes away around the value, but cannot be done with trim. This is because attribute="'blal'" should be poosible.
+			if ( (substr($htmlattribute[1], 0, 1) == '"' || substr($htmlattribute[1], 0, 1) == "'") &&
+				substr($htmlattribute[1], 0, 1) === substr($htmlattribute[1], strlen($htmlattribute[1]) - 1, 1))
+					$htmlattribute[1] = trim($htmlattribute[1], substr($htmlattribute[1], 0, 1));
+			
+			$retarr[strtolower(trim($htmlattribute[0]))] = $htmlattribute[1];
+		}
+		
+		return $retarr;
 	}
 }
