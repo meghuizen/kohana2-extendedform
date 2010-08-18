@@ -190,7 +190,18 @@ class extendedform_Core extends form {
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
 			
-			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			
+			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
+				$oldclasses = (strpos($oldattrs["class"], ' ') !== FALSE) ? explode(' ', $oldattrs["class"]) : array($oldattrs["class"]);
+				$newclasses = (strpos($newattributes["class"], ' ') !== FALSE) ? explode(' ', $newattributes["class"]) : array($newattributes["class"]);
+				
+				$newclasses = array_merge($oldclasses, $newclasses);
+				$newclasses = array_unique($newclasses);
+				
+				$newattributes["class"] = trim(implode(' ', $newclasses));
+			}
 			
 			self::$_inputelements[$originalname] = '<input';
 			foreach ($newattributes as $attr => $val) {
@@ -238,8 +249,19 @@ class extendedform_Core extends form {
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_labelelements[$originalid], $newattributes);
 			
-			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
-
+			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			
+			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
+				$oldclasses = (strpos($oldattrs["class"], ' ') !== FALSE) ? explode(' ', $oldattrs["class"]) : array($oldattrs["class"]);
+				$newclasses = (strpos($newattributes["class"], ' ') !== FALSE) ? explode(' ', $newattributes["class"]) : array($newattributes["class"]);
+				
+				$newclasses = array_merge($oldclasses, $newclasses);
+				$newclasses = array_unique($newclasses);
+				
+				$newattributes["class"] = trim(implode(' ', $newclasses));
+			}
+			
 			self::$_labelelements[$originalid] = '<label';
 			foreach ($newattributes as $attr => $val) {
 				$quotechar = '"';
@@ -283,8 +305,19 @@ class extendedform_Core extends form {
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
-			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
-
+			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			
+			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
+				$oldclasses = (strpos($oldattrs["class"], ' ') !== FALSE) ? explode(' ', $oldattrs["class"]) : array($oldattrs["class"]);
+				$newclasses = (strpos($newattributes["class"], ' ') !== FALSE) ? explode(' ', $newattributes["class"]) : array($newattributes["class"]);
+				
+				$newclasses = array_merge($oldclasses, $newclasses);
+				$newclasses = array_unique($newclasses);
+				
+				$newattributes["class"] = trim(implode(' ', $newclasses));
+			}
+			
 			self::$_inputelements[$originalname] = '<select';
 			foreach ($newattributes as $attr => $val) {
 				$quotechar = '"';
@@ -328,8 +361,19 @@ class extendedform_Core extends form {
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
-			$newattributes = array_merge(self::htmlattributes_tokeyvalarray($newattributes[0]), self::htmlattributes_tokeyvalarray($originalattributes[0]));
-
+			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
+			
+			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
+				$oldclasses = (strpos($oldattrs["class"], ' ') !== FALSE) ? explode(' ', $oldattrs["class"]) : array($oldattrs["class"]);
+				$newclasses = (strpos($newattributes["class"], ' ') !== FALSE) ? explode(' ', $newattributes["class"]) : array($newattributes["class"]);
+				
+				$newclasses = array_merge($oldclasses, $newclasses);
+				$newclasses = array_unique($newclasses);
+				
+				$newattributes["class"] = trim(implode(' ', $newclasses));
+			}
+			
 			self::$_inputelements[$originalname] = '<textarea';
 			foreach ($newattributes as $attr => $val) {
 				$quotechar = '"';
