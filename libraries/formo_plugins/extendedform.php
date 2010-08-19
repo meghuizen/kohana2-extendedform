@@ -21,7 +21,7 @@ class Formo_extendedform {
 	
 	protected $save_id = array();
 	
-	public function __construct($form)
+	public function __construct( & $form)
 	{
 		Event::add('formo.pre_addpost', array($this, 'pre_addpost'));
 		Event::add('formo.post_validate', array($this, 'auto_save'));
@@ -38,7 +38,7 @@ class Formo_extendedform {
 			->bind('model', $this->model);
 	}
 	
-	public static function load($form)
+	public static function load( & $form)
 	{
 		return new Formo_extendedform($form);
 	}
@@ -203,15 +203,26 @@ class Formo_extendedform {
 			
 			//parsing column_data
 			if (!empty($column_data[$field])) {
-				$this->form->$field->label = $column_data[$field]["label"];
+				$this->form->$alias_field->label = $column_data[$field]["label"];
 				
 				if (isset($column_data[$field]["required"])) {
-					$this->form->$field->required = (bool) $column_data[$field]["required"];
+					$this->form->$alias_field->required = (bool) $column_data[$field]["required"];
 				}
 				if (!empty($column_data[$field]["maxlength"])) {
-					$this->form->$field->length = intval($column_data[$field]["maxlength"]);
+					$this->form->$alias_field->length = intval($column_data[$field]["maxlength"]);
 				}
-				//$this->form->set($field, array('title' => $column_data[$field]["description"]));
+				$this->form->$alias_field->title = $column_data[$field]["description"];
+				
+				if (isset($column_data[$field]["editable"]) && !$column_data[$field]["editable"]) {
+					$this->form->$alias_field->disabled = 'disabled';
+				}
+				
+				if (isset($column_data[$field]["type"]) && $column_data[$field]["type"] == "integer") {
+					$this->form->$alias_field->size = 3;
+				}
+				if (isset($column_data[$field]["type"]) && $column_data[$field]["type"] == "uuid") {
+					$this->form->$alias_field->size = 36;
+				}
 			}
 		}
 	}

@@ -106,6 +106,8 @@ class extendedform_Core extends form {
 					break;
 				case "uuid":
 					$column_data[$col]["type"] = "uuid";
+					$column_data[$col]["maxlength"] = 36;
+					$column_data[$col]["minlength"] = 36;
 					break;
 				default:
 					$column_data[$col]["type"] = $type;
@@ -128,6 +130,12 @@ class extendedform_Core extends form {
 			$object->set_column_data($column_data);
 		
 		return $column_data;
+	}
+	
+	public static function get_input_attributes(ORM & $object, $fieldname) {
+		$column_data = self::parse_column_data($object);
+		
+		return array();
 	}
 	
 	public static function get_inputs() {
