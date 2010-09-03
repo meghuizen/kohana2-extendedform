@@ -30,6 +30,7 @@ class Formo_extendedform {
 		$this->form = $form;		
 		$this->form
 			->add_function('extendedorm', array($this, 'extendedorm'))
+			->add_function('extendedview', array($this, 'extendedview'))
 			->add_function('save', array($this, 'save'))
 			->add_function('get_model', array($this, 'get_model'))
 			->bind('ignores', $this->ignores)
@@ -80,7 +81,11 @@ class Formo_extendedform {
 		$this->load_settings($_model);
 		$this->load_elements($_model);								
 	}
-		
+	
+	public function extendedview($viewdata, $other_inputfields = FALSE) {
+		extendedform::read_view($viewdata, $other_inputfields);
+	}
+	
 	private function load_settings($_model)
 	{
 		$straight_settings = array
@@ -197,7 +202,17 @@ class Formo_extendedform {
 			}
 			else
 			{
-				$this->form->add($alias_field, $info);
+				if (!empty($column_data[$field]["inputtype"])) {
+					try
+					{
+						$this->form->add($column_data[$field]["inputtype"], $alias_field, $info);
+					}
+					catch (Exception $e)
+					{
+						$this->form->add($alias_field, $info);
+					}
+				} else
+					$this->form->add($alias_field, $info);
 			}
 			
 			
@@ -207,11 +222,18 @@ class Formo_extendedform {
 				
 				if (isset($column_data[$field]["required"])) {
 					$this->form->$alias_field->required = (bool) $column_data[$field]["required"];
+					
+					if ((bool) $column_data[$field]["required"] === TRUE)
+					if (!empty($this->form->$alias_field->class) && strpos($this->form->$alias_field->class, "required") === FALSE) {
+						$this->form->$alias_field->class .= ' required';	
+						
+					}
 				}
 				if (!empty($column_data[$field]["maxlength"])) {
 					$this->form->$alias_field->length = intval($column_data[$field]["maxlength"]);
 				}
 				$this->form->$alias_field->title = $column_data[$field]["description"];
+				$this->form->$alias_field->id = str_replace(".", "-", "txt" . $column_data[$field]["name"]);
 				
 				if (isset($column_data[$field]["editable"]) && !$column_data[$field]["editable"]) {
 					$this->form->$alias_field->disabled = 'disabled';

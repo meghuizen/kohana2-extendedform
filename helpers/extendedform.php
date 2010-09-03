@@ -20,17 +20,30 @@ class extendedform_Core extends form {
 			$inputdata = array(
 				"name" => $columndata["name"],
 				"id" => str_replace(".", "-", "txt" . $columndata["name"]), //for CSS
-				"class" => $columndata["type"],
+				"class" => $columndata["valuetype"],
 				"title" => $columndata["description"]
 			);
 			$labeldata = array(
 				"for" => str_replace(".", "-", "txt" . $columndata["name"]), //for CSS
 				"id" => str_replace(".", "-", "lbl" . $columndata["name"]), //for CSS
-				"class" => $columndata["type"],
+				"class" => $columndata["valuetype"],
 				"title" => $columndata["description"]
 			);
-			self::$_inputelements[$columndata["name"]] = self::input($inputdata, $object->$column);
-			self::$_labelelements[$columndata["name"]] = self::label($labeldata, $columndata["label"]);
+			
+			if (!empty($columndata["required"]) && $columndata["required"] === TRUE) {
+				if (strpos($inputdata["class"], "required") === FALSE)
+					$inputdata["class"] = trim($inputdata["class"] . " required");
+				if (strpos($labeldata["class"], "required") === FALSE)
+					$labeldata["class"] = trim($labeldata["class"] . " required");
+			}
+			if (!empty($columndata["type"]))
+				$inputdata["type"] = $columndata["type"];
+			
+			if (!empty($columndata["type"]) && strpos($labeldata["class"], $columndata["type"]) === FALSE)
+				$labeldata["class"] = trim($labeldata["class"] . " " . $columndata["type"]);
+			
+			self::$_inputelements[$columndata["name"]] = $inputdata;
+			self::$_labelelements[$columndata["name"]] = $labeldata;
 			self::$_ormobjects[$object->object_name] = & $object;
 		}
 
@@ -58,59 +71,101 @@ class extendedform_Core extends form {
 			
 			if (is_array($type)) {
 				$column = $type;
-				$type = $type["type"];
+				$type = $type["valuetype"];
 				
 				if (!empty($column['null']))
 					$column_data[$col]["required"] = FALSE;
-				else
+				else {
 					$column_data[$col]["required"] = TRUE;
+				}
 				if (!empty($column['length']))
 					$column_data[$col]["maxlength"] = $column["length"];
 			}
 			
 			$type = strtolower($type);
 			
-			if (empty($column_data[$col]["type"]))
+			
 			switch (preg_replace('/\([0-9a-z]+\)/i', '', $type)) {
 				case "varchar":
-					$column_data[$col]["type"] = "text";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "text";
+					
 					$length = intval(trim(str_replace(array('varchar', '(', ')'), '', $type)));
 					$column_data[$col]["maxlength"] = $length;
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "text";
 					break;
 				case "string":
-					$column_data[$col]["type"] = "text";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "text";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "text";
 					break;
 				case "bool":
 				case "boolean":
 				case "tinyint":
-					$column_data[$col]["type"] = "checkbox";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "boolean";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "checkbox";
 					break;
 				case "integer":
 				case "int":
-					$column_data[$col]["type"] = "integer";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "integer";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "text";
 					break;
 				case "float":
 				case "double":
-					$column_data[$col]["type"] = "float";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "float";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "text";
 					break;
 				case "timestamp":
 				case "datetime":
-					$column_data[$col]["type"] = "datetime";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "datetime";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "datetime";
 					break;
 				case "date":
-					$column_data[$col]["type"] = "date";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "date";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "date";
 					break;
 				case "tinytext":
 				case "text":
-					$column_data[$col]["type"] = "textarea";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "text";
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "textarea";
 					break;
 				case "uuid":
-					$column_data[$col]["type"] = "uuid";
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = "uuid";
 					$column_data[$col]["maxlength"] = 36;
 					$column_data[$col]["minlength"] = 36;
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = "uuid";
 					break;
 				default:
-					$column_data[$col]["type"] = $type;
+					if (empty($column_data[$col]["valuetype"]))
+						$column_data[$col]["valuetype"] = $type;
+					
+					if (empty($column_data[$col]["type"]))
+						$column_data[$col]["type"] = $type;
 					break;
 			}
 			
@@ -162,13 +217,83 @@ class extendedform_Core extends form {
 		return json_encode($jsonarr);
 	}
 	
+	public static function read_view($view, $other_inputfields = FALSE) {
+		$viewdata = '';
+		
+		try {
+			if ($view instanceof View)
+				$viewdata = $view->kohana_filename;
+			else
+				$viewdata = (string) Kohana::find_file('views', $view, TRUE);
+			
+			$viewdata = file_get_contents($viewdata);
+		} catch (Exception $e) {}
+		
+		return self::parse_html($viewdata, $other_inputfields);
+	}
+	
 	public static function parse_view($view, $other_inputfields = FALSE) {
 		$viewdata = '';
 		
-		if ($view instanceof View)
-			$viewdata = $view->render();
-		else
-			$viewdata = (string) $view;
+		try {
+			if ($view instanceof View)
+				$viewdata = $view->render();
+			else
+				$viewdata = (string) $view;
+		} catch (Exception $e) {}
+		
+		return self::parse_html($viewdata, $other_inputfields);
+	}
+	
+	public static function parse_element($attributes) {
+		if (empty($attributes["type"]))
+			$attributes["type"] = "text";
+		
+		$html = '';
+		$cvalue = NULL;
+		
+		if (!empty($attributes["value"])) {
+			$cvalue = $attributes["value"];
+			unset($attributes["value"]);
+		}
+		
+		switch ($attributes["type"]) {
+			case 'label':
+				$html = self::label($attributes, $cvalue);
+				break;
+			case 'textarea':
+				$html = self::textarea($attributes, $cvalue);
+				break;
+			case 'hidden':
+				$html = self::hidden($attributes, $cvalue);
+				break;
+			case 'password':
+				$html = self::password($attributes, $cvalue);
+				break;
+			case 'checkbox':
+				$html = self::checkbox($attributes, $cvalue);
+				break;
+			case 'radio':
+				$html = self::radio($attributes, $cvalue);
+				break;
+			case 'text':
+			case 'textbox':
+			case 'date':
+			case 'datetime':
+			case 'uuid':
+			default:
+				$html = self::input($attributes, $cvalue);
+				break;
+		}
+		return $html;
+	}
+	
+	public static function parse_html($view, $other_inputfields = FALSE) {
+		$viewdata = $view;
+		
+		if (empty($viewdata))
+			return $viewdata;
+		
 		// TODO: this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times) (so does NOT work yet!!)
 		preg_match_all('/<input[^>]*?>/i', $viewdata, $originalinputs);
 		preg_match_all('/<textarea[^>]*?>.*?<\/textarea>/i', $viewdata, $originaltextareas);
@@ -187,18 +312,16 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname])) {
-				if ($other_inputfields)
-					self::$_inputelements[$originalname] = $input;
+			if ((empty(self::$_inputelements[$originalname]) && !$other_inputfields))
 				continue;
+			if ((empty(self::$_inputelements[$originalname]) || !is_array(self::$_inputelements[$originalname])) && $other_inputfields) {
+					self::$_inputelements[$originalname] = array();
 			}
 			
 			//attributes need to have quotes. Without they will not be catched
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $input, $originalattributes);
-			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
-			
-			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$oldattrs = self::$_inputelements[$originalname];
 			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
 			
 			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
@@ -210,23 +333,23 @@ class extendedform_Core extends form {
 				
 				$newattributes["class"] = trim(implode(' ', $newclasses));
 			}
-			
-			self::$_inputelements[$originalname] = '<input';
-			foreach ($newattributes as $attr => $val) {
-				$quotechar = '"';
+			if (!empty($newattributes["style"]) && !empty($oldattrs["style"])) {
+				$oldstyle = self::cssattributes_tokeyvalarray($oldattrs["style"]);
+				$newstyle = self::cssattributes_tokeyvalarray($newattributes["style"]);
+				$newstyle = array_merge($oldstyle, $newstyle);
 				
-				if (strpos($val, '"') !== FALSE)
-					$quotechar = "'";
-				
-				// no need to use htmlentities or specialchars, because that has already been done
-				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+				$newattributes["style"] = '';
+				if (!empty($newstyle) && count($newstyle) > 0)
+				foreach ($newstyle as $attr => $val) {
+					$newattributes["style"] .= $attr . ': ' . $val . ';';
+				}
 			}
-			if (substr($originalhtml, strlen($originalhtml) - 2, 2) === "/>")
-				self::$_inputelements[$originalname] .= ' />';
-			else
-				self::$_inputelements[$originalname] .= ' >';
+			if (empty($newattributes["type"]))
+				$newattributes["type"] = "text";
 			
-			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
+			self::$_inputelements[$originalname] = $newattributes;
+			
+			$viewdata = str_replace($input, self::parse_element(self::$_inputelements[$originalname]), $viewdata);
 		}
 		
 		// labels
@@ -240,24 +363,23 @@ class extendedform_Core extends form {
 			$originalid = $originalid[1];
 			$originalhtml = $label;
 			
-			if (empty(self::$_labelelements[$originalid])) {
-				if ($other_inputfields)
-					self::$_labelelements[$originalid] = $label;
+			if ((empty(self::$_labelelements[$originalid]) && !$other_inputfields))
 				continue;
+			if ((empty(self::$_labelelements[$originalid]) || !is_array(self::$_labelelements[$originalid])) && $other_inputfields) {
+					self::$_labelelements[$originalid] = array();
 			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
-			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)/i', $label, $attributepart);
-			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)(.*?<\/label>)/i', self::$_labelelements[$originalid], $otherpart);
+		
+			preg_match('/(<label.*?"[^>]*?>[^>]*?"[^>]*?>|<label.*?\'[^>]*?>[^>]*?\'[^>]*?>|<label[^>]*?>)(.*?<\/label>)/i', $label, $attributepart);
 			
+			$otherpart = $attributepart[2];
 			$attributepart = $attributepart[0];
-			$otherpart = $otherpart[2];
 			
 			//attributes need to have quotes. Without they will not be catched
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
-			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_labelelements[$originalid], $newattributes);
 			
-			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$oldattrs = self::$_labelelements[$originalid];
 			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
 			
 			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
@@ -269,20 +391,27 @@ class extendedform_Core extends form {
 				
 				$newattributes["class"] = trim(implode(' ', $newclasses));
 			}
-			
-			self::$_labelelements[$originalid] = '<label';
-			foreach ($newattributes as $attr => $val) {
-				$quotechar = '"';
+			if (!empty($newattributes["style"]) && !empty($oldattrs["style"])) {
+				$oldstyle = self::cssattributes_tokeyvalarray($oldattrs["style"]);
+				$newstyle = self::cssattributes_tokeyvalarray($newattributes["style"]);
+				$newstyle = array_merge($oldstyle, $newstyle);
 				
-				if (strpos($val, '"') !== FALSE)
-					$quotechar = "'";
-				
-				// no need to use htmlentities or specialchars, because that has already been done
-				self::$_labelelements[$originalid] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+				$newattributes["style"] = '';
+				if (!empty($newstyle) && count($newstyle) > 0)
+				foreach ($newstyle as $attr => $val) {
+					$newattributes["style"] .= $attr . ': ' . $val . ';';
+				}
 			}
-			self::$_labelelements[$originalid] .= ">" . $otherpart;
+			if (empty($newattributes["type"]))
+				$newattributes["type"] = "label";
+				
+			$otherpart = trim(str_ireplace('</label>', '', $otherpart));
+			if (!empty($otherpart))
+				$newattributes["value"] = $otherpart;
 			
-			$viewdata = str_replace($originalhtml, self::$_labelelements[$originalid], $viewdata);
+			self::$_labelelements[$originalid] = $newattributes;
+			
+			$viewdata = str_replace($label, self::parse_element(self::$_labelelements[$originalid]), $viewdata);
 		}
 		
 		// select boxes
@@ -296,24 +425,22 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname])) {
-				if ($other_inputfields)
-					self::$_inputelements[$originalname] = $input;
+			if ((empty(self::$_inputelements[$originalname]) && !$other_inputfields))
 				continue;
+			if ((empty(self::$_inputelements[$originalname]) || !is_array(self::$_inputelements[$originalname])) && $other_inputfields) {
+					self::$_inputelements[$originalname] = array();
 			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
-			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)/i', $input, $attributepart);
-			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)(.*?<\/select>)/i', self::$_inputelements[$originalname], $otherpart);
+			preg_match('/(<select.*?"[^>]*?>[^>]*?"[^>]*?>|<select.*?\'[^>]*?>[^>]*?\'[^>]*?>|<select[^>]*?>)(.*?<\/select>)/i', $input, $attributepart);
 			
+			$otherpart = $attributepart[2];
 			$attributepart = $attributepart[0];
-			$otherpart = $otherpart[2];
 			
 			//attributes need to have quotes. Without they will not be catched
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
-			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
-			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$oldattrs = self::$_inputelements[$originalname];
 			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
 			
 			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
@@ -325,20 +452,27 @@ class extendedform_Core extends form {
 				
 				$newattributes["class"] = trim(implode(' ', $newclasses));
 			}
-			
-			self::$_inputelements[$originalname] = '<select';
-			foreach ($newattributes as $attr => $val) {
-				$quotechar = '"';
+			if (!empty($newattributes["style"]) && !empty($oldattrs["style"])) {
+				$oldstyle = self::cssattributes_tokeyvalarray($oldattrs["style"]);
+				$newstyle = self::cssattributes_tokeyvalarray($newattributes["style"]);
+				$newstyle = array_merge($oldstyle, $newstyle);
 				
-				if (strpos($val, '"') !== FALSE)
-					$quotechar = "'";
-				
-				// no need to use htmlentities or specialchars, because that has already been done
-				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+				$newattributes["style"] = '';
+				if (!empty($newstyle) && count($newstyle) > 0)
+				foreach ($newstyle as $attr => $val) {
+					$newattributes["style"] .= $attr . ': ' . $val . ';';
+				}
 			}
-			self::$_inputelements[$originalname] .= ">" . $otherpart;
+			$newattributes["type"] = "select";
 			
-			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
+			//TODO: something with the options (<option>)
+			$otherpart = trim(str_ireplace('</select>', '', $otherpart));
+			if (!empty($otherpart))
+				$newattributes["value"] = $otherpart;
+			
+			self::$_inputelements[$originalname] = $newattributes;
+			
+			$viewdata = str_replace($input, self::parse_element(self::$_inputelements[$originalname]), $viewdata);
 		}
 		
 		// textareas
@@ -352,24 +486,22 @@ class extendedform_Core extends form {
 			$originalname = $originalname[1];
 			$originalhtml = $input;
 			
-			if (empty(self::$_inputelements[$originalname])) {
-				if ($other_inputfields)
-					self::$_inputelements[$originalname] = $input;
+			if ((empty(self::$_inputelements[$originalname]) && !$other_inputfields))
 				continue;
+			if ((empty(self::$_inputelements[$originalname]) || !is_array(self::$_inputelements[$originalname])) && $other_inputfields) {
+					self::$_inputelements[$originalname] = array();
 			}
 			
 			// this needs to work as well: attr="dgfds >" or attr='bla> dfs', etc. (also multiple times)
-			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)/i', $input, $attributepart);
-			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)(.*?<\/textarea>)/i', self::$_inputelements[$originalname], $otherpart);
+			preg_match('/(<textarea.*?"[^>]*?>[^>]*?"[^>]*?>|<textarea.*?\'[^>]*?>[^>]*?\'[^>]*?>|<textarea[^>]*?>)(.*?<\/textarea>)/i', $input, $attributepart);
 			
+			$otherpart = $attributepart[2];
 			$attributepart = $attributepart[0];
-			$otherpart = $otherpart[2];
 			
 			//attributes need to have quotes. Without they will not be catched
 			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', $attributepart, $originalattributes);
-			preg_match_all('/([ ]+([a-z0-9]+)="([^"]*?)"|[ ]+([a-z0-9]+)=\'([^\']*?)\'|[ ]+([a-z0-9]+))/i', self::$_inputelements[$originalname], $newattributes);
 			
-			$oldattrs = self::htmlattributes_tokeyvalarray($newattributes[0]);
+			$oldattrs = self::$_inputelements[$originalname];
 			$newattributes = array_merge($oldattrs, self::htmlattributes_tokeyvalarray($originalattributes[0]));
 			
 			if (!empty($newattributes["class"]) && !empty($oldattrs["class"])) {
@@ -381,20 +513,26 @@ class extendedform_Core extends form {
 				
 				$newattributes["class"] = trim(implode(' ', $newclasses));
 			}
-			
-			self::$_inputelements[$originalname] = '<textarea';
-			foreach ($newattributes as $attr => $val) {
-				$quotechar = '"';
+			if (!empty($newattributes["style"]) && !empty($oldattrs["style"])) {
+				$oldstyle = self::cssattributes_tokeyvalarray($oldattrs["style"]);
+				$newstyle = self::cssattributes_tokeyvalarray($newattributes["style"]);
+				$newstyle = array_merge($oldstyle, $newstyle);
 				
-				if (strpos($val, '"') !== FALSE)
-					$quotechar = "'";
-				
-				// no need to use htmlentities or specialchars, because that has already been done
-				self::$_inputelements[$originalname] .= ' ' . $attr . '=' . $quotechar . $val . $quotechar;
+				$newattributes["style"] = '';
+				if (!empty($newstyle) && count($newstyle) > 0)
+				foreach ($newstyle as $attr => $val) {
+					$newattributes["style"] .= $attr . ': ' . $val . ';';
+				}
 			}
-			self::$_inputelements[$originalname] .= ">" . $otherpart;
+			$newattributes["type"] = "textarea";
+				
+			$otherpart = trim(str_ireplace('</textarea>', '', $otherpart));
+			if (!empty($otherpart))
+				$newattributes["value"] = $otherpart;
 			
-			$viewdata = str_replace($originalhtml, self::$_inputelements[$originalname], $viewdata);
+			self::$_inputelements[$originalname] = $newattributes;
+			
+			$viewdata = str_replace($input, self::parse_element(self::$_inputelements[$originalname]), $viewdata);
 		}
 		
 		return $viewdata;
@@ -420,6 +558,34 @@ class extendedform_Core extends form {
 					$htmlattribute[1] = trim($htmlattribute[1], substr($htmlattribute[1], 0, 1));
 			
 			$retarr[strtolower(trim($htmlattribute[0]))] = $htmlattribute[1];
+		}
+		
+		return $retarr;
+	}
+	
+	public static function cssattributes_tokeyvalarray($cssattributes) {
+		$retarr = array();
+		$cssattributesarray = array();
+		
+		if (empty($cssattributes))
+			return array();
+		if (is_array($cssattributes))
+			$cssattributesarray = $cssattributes;
+		else
+			$cssattributesarray = (strpos($cssattributes, ';') !== FALSE) ? explode(';', $cssattributes) : array($cssattributes);
+		
+		if (!empty($cssattributesarray) && count($cssattributesarray) > 0)
+		foreach ($cssattributesarray as $cstyle) {
+			$cstyle = trim($cstyle);
+			
+			if (empty($cstyle))
+				continue;
+			if (strpos($cstyle, ':') === FALSE) //not valid
+				continue;
+			
+			$cstyle = explode(':', $cstyle);
+			
+			$retarr[trim(strtolower($cstyle[0]))] = trim($cstyle[1]);
 		}
 		
 		return $retarr;

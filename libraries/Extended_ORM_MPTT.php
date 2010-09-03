@@ -4,7 +4,8 @@ class Extended_ORM_MPTT extends ORM_MPTT {
 
 	/*protected $_column_data = array(
 		"fieldname" => array(
-			"type" => "type", // integer, text, textarea, wysiwyg, uuid, date, datetime, checkbox, radiobutton, select
+			"type" => "type", // integer, text, uuid, date, datetime, boolean, float
+			"inputtype" => "textbox", // text, textarea, wysiwyg, uuid, date, datetime, checkbox, radiobutton, select, (HTML 5)
 			"description" => "group.field.id.description", // $this->object_name . '.' . 'field' . '$fieldname' . 'description';
 			"label" => "group.field.id.label", // $this->object_name . '.' . 'field' . '$fieldname' . 'label';
 			"watermark" => "group.field.id.watermark",  // $this->object_name . '.' . 'field' . '$fieldname' . 'watermark';
@@ -24,6 +25,32 @@ class Extended_ORM_MPTT extends ORM_MPTT {
 		),
 		
 	);*/
+	
+	/* HTML5 input types:
+	 *  	button
+			checkbox
+			color
+			date
+			datetime
+			datetime-local
+			email
+			file
+			hidden
+			image
+			month
+			number
+			password
+			radio
+			range
+			reset
+			search
+			submit
+			tel
+			text
+			time
+			url
+			week 
+	 */
 	protected $_column_data = array();
 	
 	public function fill_column_data () {
