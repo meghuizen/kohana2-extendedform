@@ -51,43 +51,53 @@ class Formo_extendedform {
 		return strtolower($_model[0]);
 	}
 	
-	public function extendedorm($_model, $id=0)
+	public function extendedorm(& $_model, $id=0, $alias = null)
 	{
+		$object_name = '';
+		if (!empty($alias))	
+			$object_name = $alias;
+		elseif (is_object($_model))
+			$object_name = self::get_model_name($_model);
+		else
+			$object_name = $_model;
+		
 		if ( ! is_object($_model))
 		{
 			// check to see if the form has cleared
 			// if not, check to see if we just entered a new record
 			if ( ! Session::instance()->get('__formo_'.$this->form->_formo_name.'_cleared')
-			     AND $_id = Session::instance()->get('__formo_model_'.$_model))
+			     AND $_id = Session::instance()->get('__formo_model_'.$object_name))
 			{
-				$this->save_id[$_model] = $_id;
+				$this->save_id[$object_name] = $_id;
 			}
 			
 			$id = ( ! empty($_id)) ? $_id : $id;
-			$this->model[$_model] = ORM::factory($_model, $id);
+			$this->model[$object_name] = ORM::factory($_model, $id);
 		}
 		// if the model specified is an object, go ahead and use it
 		else
 		{
 			$model_name = self::get_model_name($_model);
-			$this->model[$model_name] = $_model;
+			$this->model[$object_name] = $_model;
 			$_model = $model_name;
 		}
 		
-		extendedform::add_orm($this->model[$_model]);
+		extendedform::add_orm($this->model[$object_name], $alias);
 		
-		$this->model_array[$_model] = array_keys($this->model[$_model]->as_array());
+		$this->model_array[$object_name] = array_keys($this->model[$object_name]->as_array());
 		
-		$this->load_settings($_model);
-		$this->load_elements($_model);								
+		$this->load_settings($_model, $alias);
+		$this->load_elements($_model, $alias);								
 	}
 	
 	public function extendedview($viewdata, $other_inputfields = FALSE) {
 		extendedform::read_view($viewdata, $other_inputfields);
 	}
 	
-	private function load_settings($_model)
+	private function load_settings($_model, $alias = null)
 	{
+		$object_name = (!empty($alias))	? $alias : $_model;
+		
 		$straight_settings = array
 		(
 			'auto_save',
@@ -110,53 +120,55 @@ class Formo_extendedform {
 		foreach ($straight_settings as $var)
 		{
 			$model_var = 'formo_'.$var;
-			if (isset($this->model[$_model]->$model_var))
+			if (isset($this->model[$object_name]->$model_var))
 			{
-				$this->$var = $this->model[$_model]->$model_var;
+				$this->$var = $this->model[$object_name]->$model_var;
 			}
 		}
 		
 		// now we'll go through the other settings
 		foreach ($settings as $orm_name=>$name)
 		{
-			if ( ! empty($this->model[$_model]->$orm_name))
+			if ( ! empty($this->model[$object_name]->$orm_name))
 			{
 				$formo_val = (isset($this->form->$name)) ? $name : '_'.$name;
 				
-				$this->form->$formo_val = array_merge($this->form->$formo_val, $this->model[$_model]->$orm_name);
+				$this->form->$formo_val = array_merge($this->form->$formo_val, $this->model[$object_name]->$orm_name);
 			}
 		}
 		
 		// finally we need to do something a bit different for aliases	
-		if ( ! empty ($this->model[$_model]->formo_aliases))
+		if ( ! empty ($this->model[$object_name]->formo_aliases))
 		{
-			$this->aliases[$_model] = (isset($this->aliases[$_model]))
-									? array_merge($this->aliases[$_model], $this->model[$_model]->formo_aliases)
-									: $this->model[$_model]->formo_aliases;
+			$this->aliases[$object_name] = (isset($this->aliases[$object_name]))
+									? array_merge($this->aliases[$object_name], $this->model[$object_name]->formo_aliases)
+									: $this->model[$object_name]->formo_aliases;
 		}		
 		
 	}
 	
-	private function load_elements($_model)
+	private function load_elements($_model, $alias = null)
 	{
-		$columns = $this->model[$_model]->table_columns;
-		$column_data = extendedform::parse_column_data($this->model[$_model]);
+		$object_name = (!empty($alias))	? $alias : $_model;
+		
+		$columns = $this->model[$object_name]->table_columns;
+		$column_data = extendedform::parse_column_data($this->model[$object_name], $alias);
 		
 		//echo Kohana::debug($column_data);
 		
-		foreach ($this->model[$_model]->table_columns as $field => $value)
+		foreach ($this->model[$object_name]->table_columns as $field => $value)
 		{
 			$info = array();
-			if ( ! empty($this->model[$_model]->$field))
+			if ( ! empty($this->model[$object_name]->$field))
 			{
-				$info['value'] = $this->model[$_model]->$field;
+				$info['value'] = $this->model[$object_name]->$field;
 			}
 			
 			$alias_field = $column_data[$field]["name"];
 			
-			if (isset($this->form->aliases[$_model][$field]))
+			if (isset($this->form->aliases[$object_name][$field]))
 			{
-				$alias_field = $this->form->aliases[$_model][$field];
+				$alias_field = $this->form->aliases[$object_name][$field];
 			}
 			
 						
@@ -166,14 +178,14 @@ class Formo_extendedform {
 			// relational tables
 			$fkey = preg_replace('/_id/','',$field);
 			
-			if (in_array($fkey, $this->model[$_model]->has_one) OR array_key_exists($fkey, $this->model[$_model]->has_one)) {
-				$model = $this->model[$_model]->$fkey;
+			if (in_array($fkey, $this->model[$object_name]->has_one) OR array_key_exists($fkey, $this->model[$object_name]->has_one)) {
+				$model = $this->model[$object_name]->$fkey;
 				
 				$this->extendedorm($model);
-			} elseif (in_array($fkey, $this->model[$_model]->belongs_to)
-			OR array_key_exists($fkey, $this->model[$_model]->belongs_to))
+			} elseif (in_array($fkey, $this->model[$object_name]->belongs_to)
+			OR array_key_exists($fkey, $this->model[$object_name]->belongs_to))
 			{
-				$model = $this->model[$_model]->$fkey;
+				$model = $this->model[$object_name]->$fkey;
 				
 				$values = $model->select_list($model->primary_key, $model->primary_val);
 				$info['values'] = arr::merge(array(''=>''), $values);
@@ -202,10 +214,10 @@ class Formo_extendedform {
 			}
 			else
 			{
-				if (!empty($column_data[$field]["inputtype"])) {
+				if (!empty($column_data[$field]["type"])) {
 					try
 					{
-						$this->form->add($column_data[$field]["inputtype"], $alias_field, $info);
+						$this->form->add($column_data[$field]["type"], $alias_field, $info);
 					}
 					catch (Exception $e)
 					{
@@ -228,12 +240,13 @@ class Formo_extendedform {
 						$this->form->$alias_field->class .= ' required';	
 						
 					}
-				}
+				} else
+					$this->form->$alias_field->required = false;
 				if (!empty($column_data[$field]["maxlength"])) {
 					$this->form->$alias_field->length = intval($column_data[$field]["maxlength"]);
 				}
 				$this->form->$alias_field->title = $column_data[$field]["description"];
-				$this->form->$alias_field->id = str_replace(".", "-", "txt" . $column_data[$field]["name"]);
+				$this->form->$alias_field->id = preg_replace('/[^a-zA-Z0-9_]/', '_', "txt" . $column_data[$field]["name"]);
 				
 				if (isset($column_data[$field]["editable"]) && !$column_data[$field]["editable"]) {
 					$this->form->$alias_field->disabled = 'disabled';

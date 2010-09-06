@@ -9,23 +9,25 @@ class extendedform_Core extends form {
 	protected static $_ormobjects = array();
 	protected static $_orm_column_data = array();
 	
-	public static function add_orm(ORM & $object) {
-		if (!empty(self::$_ormobjects[$object->object_name])) // don't go in a recursive loop
+	public static function add_orm(ORM & $object, $alias = NULL) {
+		$object_name = (!empty($alias)) ? $alias : $object->object_name;
+		
+		if (!empty(self::$_ormobjects[$object_name])) // don't go in a recursive loop
 			return FALSE;
 		
-		$columndata = self::parse_column_data($object);
+		$columndata = self::parse_column_data($object, $alias);
 		
 		if (!empty($columndata) && count($columndata) > 0)
 		foreach ($columndata as $column => $columndata) {
 			$inputdata = array(
-				"name" => $columndata["name"],
-				"id" => str_replace(".", "-", "txt" . $columndata["name"]), //for CSS
+				"name" => preg_replace('/[^a-zA-Z0-9_]/', '_', $columndata["name"]),
+				"id" => preg_replace('/[^a-zA-Z0-9_]/', '_', "txt" . $columndata["name"]), //for CSS
 				"class" => $columndata["valuetype"],
 				"title" => $columndata["description"]
 			);
 			$labeldata = array(
-				"for" => str_replace(".", "-", "txt" . $columndata["name"]), //for CSS
-				"id" => str_replace(".", "-", "lbl" . $columndata["name"]), //for CSS
+				"for" => preg_replace('/[^a-zA-Z0-9_]/', '_', "txt" . $columndata["name"]), //for CSS
+				"id" => preg_replace('/[^a-zA-Z0-9_]/', '_', "lbl" . $columndata["name"]), //for CSS
 				"class" => $columndata["valuetype"],
 				"title" => $columndata["description"]
 			);
@@ -44,7 +46,7 @@ class extendedform_Core extends form {
 			
 			self::$_inputelements[$columndata["name"]] = $inputdata;
 			self::$_labelelements[$columndata["name"]] = $labeldata;
-			self::$_ormobjects[$object->object_name] = & $object;
+			self::$_ormobjects[$object_name] = & $object;
 		}
 
 		if (count($object->has_one) > 0)
@@ -55,11 +57,12 @@ class extendedform_Core extends form {
 		return TRUE;
 	}
 	
-	public static function parse_column_data(ORM & $object) {
+	public static function parse_column_data(ORM & $object, $alias = NULL) {
 		$column_data = array();
+		$object_name = (!empty($alias)) ? $alias : $object->object_name;
 		
-		if (!empty(self::$_orm_column_data[$object->object_name]))
-			return self::$_orm_column_data[$object->object_name];
+		if (!empty(self::$_orm_column_data[$object_name]))
+			return self::$_orm_column_data[$object_name];
 		
 		if (method_exists($object, 'get_column_data'))
 			$column_data = $object->get_column_data();
@@ -82,9 +85,12 @@ class extendedform_Core extends form {
 					$column_data[$col]["maxlength"] = $column["length"];
 			}
 			
+			if ($object->primary_key == $col) {
+				if (empty($column_data[$col]["type"]))
+					$column_data[$col]["type"] = "hidden";
+			}
+			
 			$type = strtolower($type);
-			
-			
 			switch (preg_replace('/\([0-9a-z]+\)/i', '', $type)) {
 				case "varchar":
 					if (empty($column_data[$col]["valuetype"]))
@@ -176,10 +182,10 @@ class extendedform_Core extends form {
 			if (empty($column_data[$col]["watermark"]))
 				$column_data[$col]["watermark"] = Kohana::lang($object->object_name . '.field.' . $col . '.watermark');
 			if (empty($column_data[$col]["name"]))
-				$column_data[$col]["name"] = $object->object_name . '.' . $col;
+				$column_data[$col]["name"] = $object_name . '_' . $col;
 		}
 		
-		self::$_orm_column_data[$object->object_name] = $column_data;
+		self::$_orm_column_data[$object_name] = $column_data;
 		
 		if (method_exists($object, 'set_column_data'))
 			$object->set_column_data($column_data);
@@ -205,12 +211,12 @@ class extendedform_Core extends form {
 		$jsonarr = array();
 		
 		if (!empty(self::$_ormobjects) && count(self::$_ormobjects) > 0)
-		foreach (self::$_ormobjects as $object) {
-			$inparr = self::parse_column_data($object);
+		foreach (self::$_ormobjects as $object_name => $object) {
+			$inparr = self::parse_column_data($object, $object_name);
 			
 			if (count($inparr) > 0)
 			foreach ($inparr as $key => $val) {
-				$jsonarr[str_replace(".", "-", "txt" . $object->object_name . '.' . $key)] = $val;
+				$jsonarr[preg_replace('/[^a-zA-Z0-9_]/', '_', "txt" . $object_name . '-' . $key)] = $val;
 			}
 		}
 		
@@ -262,12 +268,27 @@ class extendedform_Core extends form {
 				$html = self::label($attributes, $cvalue);
 				break;
 			case 'textarea':
+				if (!empty($attributes["length"])) {
+					$attributes["maxlength"] = $attributes["length"];
+					unset($attributes["length"]);
+				}
+				
 				$html = self::textarea($attributes, $cvalue);
 				break;
 			case 'hidden':
-				$html = self::hidden($attributes, $cvalue);
+				if (!empty($attributes["length"])) {
+					$attributes["maxlength"] = $attributes["length"];
+					unset($attributes["length"]);
+				}
+				
+				$html = self::input($attributes, $cvalue);
 				break;
 			case 'password':
+				if (!empty($attributes["length"])) {
+					$attributes["maxlength"] = $attributes["length"];
+					unset($attributes["length"]);
+				}
+				
 				$html = self::password($attributes, $cvalue);
 				break;
 			case 'checkbox':
@@ -276,12 +297,19 @@ class extendedform_Core extends form {
 			case 'radio':
 				$html = self::radio($attributes, $cvalue);
 				break;
+			case 'integer':
+			case 'int':
 			case 'text':
 			case 'textbox':
 			case 'date':
 			case 'datetime':
 			case 'uuid':
 			default:
+				if (!empty($attributes["length"])) {
+					$attributes["maxlength"] = $attributes["length"];
+					unset($attributes["length"]);
+				}
+				
 				$html = self::input($attributes, $cvalue);
 				break;
 		}
